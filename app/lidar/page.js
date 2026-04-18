@@ -142,6 +142,8 @@ function Counter({ target, suffix = "", decimals = 0 }) {
 function LidarCanvas() {
   const canvasRef = useRef(null);
   const rafRef    = useRef(null);
+  // Responsive: use a ref to track actual rendered size
+  const wrapperRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -151,7 +153,6 @@ function LidarCanvas() {
     const cx = W / 2, cy = H / 2;
     const R  = Math.min(W, H) * 0.4;
 
-    // Build irregular sewer cross-section
     const sewerPts = Array.from({ length: 120 }, (_, i) => {
       const a   = (i / 120) * Math.PI * 2;
       const deg = i * 3;
@@ -167,14 +168,12 @@ function LidarCanvas() {
     const draw = () => {
       ctx.clearRect(0, 0, W, H);
 
-      // Grid dots
       ctx.fillStyle = "rgba(0,255,231,0.06)";
       for (let x = 40; x < W; x += 40)
         for (let y = 30; y < H; y += 30) {
           ctx.beginPath(); ctx.arc(x, y, 1, 0, Math.PI * 2); ctx.fill();
         }
 
-      // Sewer wall fill
       ctx.beginPath();
       sewerPts.forEach((p, i) => {
         const x = cx + Math.cos(p.angle) * p.dist;
@@ -188,7 +187,6 @@ function LidarCanvas() {
       ctx.lineWidth   = 1.5;
       ctx.stroke();
 
-      // Blockage highlight
       ctx.beginPath();
       sewerPts.slice(66, 87).forEach((p, i) => {
         const x = cx + Math.cos(p.angle) * p.dist;
@@ -199,7 +197,6 @@ function LidarCanvas() {
       ctx.lineWidth   = 3;
       ctx.stroke();
 
-      // Hit point
       const hitPt = sewerPts.reduce((best, p) => {
         const diff     = Math.abs(p.angle - scanAngle);
         const bestDiff = Math.abs(best.angle - scanAngle);
@@ -212,7 +209,6 @@ function LidarCanvas() {
       trail.push({ x: hx, y: hy });
       if (trail.length > TRAIL) trail.shift();
 
-      // Trail dots
       trail.forEach((pt, i) => {
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
@@ -220,14 +216,12 @@ function LidarCanvas() {
         ctx.fill();
       });
 
-      // Beam
       const grad = ctx.createLinearGradient(cx, cy, hx, hy);
       grad.addColorStop(0, "rgba(0,255,231,0.55)");
       grad.addColorStop(1, "rgba(0,255,231,0.02)");
       ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(hx, hy);
       ctx.strokeStyle = grad; ctx.lineWidth = 1.5; ctx.stroke();
 
-      // Hit glow
       const g2 = ctx.createRadialGradient(hx, hy, 0, hx, hy, 12);
       g2.addColorStop(0, "rgba(0,255,231,0.9)");
       g2.addColorStop(1, "rgba(0,255,231,0)");
@@ -236,7 +230,6 @@ function LidarCanvas() {
       ctx.beginPath(); ctx.arc(hx, hy, 3, 0, Math.PI * 2);
       ctx.fillStyle = "#00ffe7"; ctx.fill();
 
-      // Center dot
       const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, 10);
       cg.addColorStop(0, "rgba(123,97,255,0.9)");
       cg.addColorStop(1, "rgba(123,97,255,0)");
@@ -245,13 +238,11 @@ function LidarCanvas() {
       ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2);
       ctx.fillStyle = "#7b61ff"; ctx.fill();
 
-      // Rings
       [R * 0.35, R * 0.6, R * 0.85].forEach((r) => {
         ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
         ctx.strokeStyle = "rgba(0,255,231,0.06)"; ctx.lineWidth = 1; ctx.stroke();
       });
 
-      // Labels
       ctx.font = "10px 'Space Mono', monospace";
       ctx.fillStyle = "rgba(255,107,107,0.75)";
       ctx.fillText("BLOCKAGE ZONE", cx + 55, cy + 68);
@@ -268,12 +259,14 @@ function LidarCanvas() {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={520}
-      height={280}
-      style={{ display: "block", maxWidth: "100%" }}
-    />
+    <div ref={wrapperRef} style={{ width: "100%", maxWidth: 520 }}>
+      <canvas
+        ref={canvasRef}
+        width={520}
+        height={280}
+        style={{ display: "block", width: "100%", height: "auto" }}
+      />
+    </div>
   );
 }
 
@@ -311,18 +304,110 @@ export default function LidarPage() {
         @keyframes blinkDot { 0%,100%{opacity:1} 50%{opacity:.1} }
         @keyframes pulseGlow { 0%,100%{transform:scale(1);opacity:.6} 50%{transform:scale(1.12);opacity:1} }
         @keyframes boardBlink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+        /* ── Responsive overrides ── */
+        .hero-stats {
+          display: flex;
+          justify-content: center;
+          gap: 2rem;
+          flex-wrap: wrap;
+        }
+        @media (max-width: 480px) {
+          .hero-stats {
+            gap: 1.5rem;
+          }
+          .hero-stat-val {
+            font-size: 2.2rem !important;
+          }
+        }
+
+        /* MCU table scroll wrapper */
+        .table-scroll {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+        .table-scroll table {
+          min-width: 520px;
+        }
+
+        /* Arduino board: stack on mobile */
+        .arduino-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 2.5rem;
+        }
+        @media (max-width: 768px) {
+          .arduino-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        /* How-it-works 4-step grid */
+        .how-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.25rem;
+          margin-bottom: 4rem;
+        }
+        @media (max-width: 600px) {
+          .how-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        /* Specs grid */
+        .specs-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1rem;
+        }
+        @media (max-width: 600px) {
+          .specs-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+
+        /* Firmware pre: allow horizontal scroll on very small screens */
+        .firmware-pre {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        /* Flow step content padding */
+        @media (max-width: 480px) {
+          .flow-content {
+            padding: 1rem !important;
+          }
+          .flow-num {
+            width: 2.5rem !important;
+            height: 2.5rem !important;
+            font-size: 10px !important;
+          }
+          .flow-connector {
+            width: 2.5rem !important;
+          }
+        }
+
+        /* Section padding */
+        @media (max-width: 640px) {
+          .section-px {
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+          }
+        }
+
+        /* Hero badge wrapping */
+        .hero-badge {
+          word-break: break-word;
+          text-align: center;
+        }
       `}</style>
 
       {/* ══ HERO ══════════════════════════════════════════════════════════════ */}
-      {/*
-        pt-16 adds 64px top padding — matches a typical fixed navbar height.
-        Increase to pt-20 (80px) or pt-24 (96px) if your navbar is taller.
-      */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
         <GridBg />
         <Particles />
 
-        {/* Ambient glow */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div
             className="w-[700px] h-[460px] rounded-full"
@@ -333,13 +418,12 @@ export default function LidarPage() {
           />
         </div>
 
-        {/* Bottom fade */}
         <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#080a0e] to-transparent pointer-events-none z-[5]" />
 
-        <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
+        <div className="relative z-10 text-center px-4 sm:px-6 max-w-5xl mx-auto w-full">
           {/* Badge */}
           <div
-            className="inline-flex items-center gap-2 font-mono text-xs text-cyan-400 tracking-widest border border-cyan-400/25 px-4 py-2 rounded-full mb-8 bg-cyan-400/5 backdrop-blur-sm"
+            className="hero-badge inline-flex items-center gap-2 font-mono text-xs text-cyan-400 tracking-widest border border-cyan-400/25 px-4 py-2 rounded-full mb-8 bg-cyan-400/5 backdrop-blur-sm"
           >
             <span
               className="w-[7px] h-[7px] rounded-full bg-cyan-400 flex-shrink-0"
@@ -351,7 +435,7 @@ export default function LidarPage() {
           {/* Headline */}
           <h1
             className="font-display text-white leading-none mb-5"
-            style={{ fontSize: "clamp(3.5rem, 11vw, 8.5rem)" }}
+            style={{ fontSize: "clamp(2.6rem, 11vw, 8.5rem)" }}
           >
             THE EYES<br />
             <span
@@ -365,20 +449,23 @@ export default function LidarPage() {
             </span>
           </h1>
 
-          <p className="text-gray-400 text-lg max-w-[560px] mx-auto mb-12 leading-relaxed">
+          <p className="text-gray-400 text-base sm:text-lg max-w-[560px] mx-auto mb-12 leading-relaxed px-2">
             RPLidar A1 spinning at 5.5 Hz, generating 8,000 distance points per second —
             processed by Arduino in real time to map every obstruction underground.
           </p>
 
           {/* Stats */}
-          <div className="flex justify-center gap-10 flex-wrap">
+          <div className="hero-stats">
             {[
               { target: "8000", suffix: "",   decimals: 0, label: "POINTS / SEC"       },
               { target: "0.15", suffix: "°",  decimals: 2, label: "DEGREE RESOLUTION"  },
               { target: "12",   suffix: "m",  decimals: 0, label: "METRE RANGE"        },
             ].map((s) => (
               <div key={s.label} className="text-center">
-                <div className="font-display text-cyan-400" style={{ fontSize: "3rem", lineHeight: 1 }}>
+                <div
+                  className="hero-stat-val font-display text-cyan-400"
+                  style={{ fontSize: "clamp(2rem, 7vw, 3rem)", lineHeight: 1 }}
+                >
                   <Counter target={s.target} suffix={s.suffix} decimals={s.decimals} />
                 </div>
                 <div className="font-mono text-[10px] text-gray-500 tracking-widest mt-1">{s.label}</div>
@@ -389,20 +476,20 @@ export default function LidarPage() {
       </section>
 
       {/* ══ HOW LIDAR WORKS ════════════════════════════════════════════════════ */}
-      <section className="relative py-24 px-6 lg:px-16">
+      <section className="section-px relative py-16 sm:py-24 px-6 lg:px-16">
         <GridBg />
         <div className="max-w-5xl mx-auto relative z-10">
           <SectionLabel color="#00ffe7">HOW IT WORKS</SectionLabel>
-          <h2 className="font-display leading-none mb-4" style={{ fontSize: "clamp(2.8rem, 7vw, 5.5rem)" }}>
+          <h2 className="font-display leading-none mb-4" style={{ fontSize: "clamp(2rem, 7vw, 5.5rem)" }}>
             LIDAR EXPLAINED
           </h2>
-          <p className="text-gray-500 text-base max-w-lg leading-relaxed mb-14">
+          <p className="text-gray-500 text-sm sm:text-base max-w-lg leading-relaxed mb-10 sm:mb-14">
             Light Detection and Ranging uses rapid laser pulses to build centimetre-accurate 3D models
             of enclosed environments — including sewer pipes.
           </p>
 
           {/* 4-step grid */}
-          <div className="grid md:grid-cols-2 gap-5 mb-16">
+          <div className="how-grid">
             {[
               { step: "STEP 01 — EMIT",    title: "Laser Pulse",   desc: "A 785 nm infrared diode fires a focused laser beam outward. The RPLidar A1 rotates its emitter 360° using a compact servo motor inside an IP67-rated housing." },
               { step: "STEP 02 — REFLECT", title: "Surface Bounce",desc: "When the beam strikes a surface — pipe wall, debris, water — a portion of the photons scatter back toward the sensor aperture. Reflectivity varies with material." },
@@ -411,25 +498,21 @@ export default function LidarPage() {
             ].map((c) => (
               <div
                 key={c.step}
-                className="relative rounded-2xl p-8 border bg-white/[0.02] overflow-hidden group cursor-default transition-all duration-300 hover:-translate-y-1"
+                className="relative rounded-2xl p-5 sm:p-8 border bg-white/[0.02] overflow-hidden group cursor-default transition-all duration-300 hover:-translate-y-1"
                 style={{ borderColor: "rgba(255,255,255,0.07)" }}
                 onMouseEnter={(e) => e.currentTarget.style.borderColor = "rgba(0,255,231,0.25)"}
                 onMouseLeave={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"}
               >
-                <div
-                  className="absolute top-0 left-0 h-px transition-all duration-700"
-                  style={{ background: "linear-gradient(90deg, #00ffe7, transparent)", width: "0%", opacity: 0.5 }}
-                />
                 <div className="font-mono text-[10px] tracking-widest text-cyan-400 mb-3">{c.step}</div>
-                <div className="font-display text-2xl text-cyan-400 mb-2">{c.title}</div>
-                <div className="text-gray-400 text-sm leading-relaxed">{c.desc}</div>
+                <div className="font-display text-xl sm:text-2xl text-cyan-400 mb-2">{c.title}</div>
+                <div className="text-gray-400 text-xs sm:text-sm leading-relaxed">{c.desc}</div>
               </div>
             ))}
           </div>
 
           {/* Canvas visualizer */}
           <div
-            className="relative rounded-2xl border overflow-hidden p-10 text-center"
+            className="relative rounded-2xl border overflow-hidden p-4 sm:p-10 text-center"
             style={{ borderColor: "rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}
           >
             <div className="flex justify-center">
@@ -443,28 +526,33 @@ export default function LidarPage() {
       </section>
 
       {/* ══ RPLIDAR SPECS ══════════════════════════════════════════════════════ */}
-      <section className="relative py-24 px-6 lg:px-16 pt-0">
+      <section className="section-px relative py-16 sm:py-24 px-6 lg:px-16 pt-0">
         <GridBg />
         <div className="max-w-5xl mx-auto relative z-10">
           <SectionLabel color="#00c9ff">HARDWARE</SectionLabel>
-          <h2 className="font-display leading-none mb-12" style={{ fontSize: "clamp(2.8rem, 7vw, 5.5rem)" }}>
+          <h2 className="font-display leading-none mb-8 sm:mb-12" style={{ fontSize: "clamp(2rem, 7vw, 5.5rem)" }}>
             RPLIDAR A1{" "}
             <span style={{ color: "#00c9ff" }}>SPECS</span>
           </h2>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="specs-grid">
             {SPECS.map((s) => (
               <div
                 key={s.key}
-                className="rounded-2xl p-6 border transition-all duration-300 hover:-translate-y-1"
+                className="rounded-2xl p-4 sm:p-6 border transition-all duration-300 hover:-translate-y-1"
                 style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.07)" }}
                 onMouseEnter={(e) => e.currentTarget.style.borderColor = "rgba(0,201,255,0.3)"}
                 onMouseLeave={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"}
               >
-                <div className="text-xl mb-3">{s.icon}</div>
-                <div className="font-mono text-[10px] text-gray-500 tracking-widest mb-1">{s.key}</div>
-                <div className="font-display text-[2.2rem] leading-none" style={{ color: "#00c9ff" }}>{s.val}</div>
-                <div className="font-mono text-[10px] text-gray-600 mt-1">{s.unit}</div>
+                <div className="text-lg sm:text-xl mb-2 sm:mb-3">{s.icon}</div>
+                <div className="font-mono text-[9px] sm:text-[10px] text-gray-500 tracking-widest mb-1">{s.key}</div>
+                <div
+                  className="font-display leading-none"
+                  style={{ color: "#00c9ff", fontSize: "clamp(1.4rem, 5vw, 2.2rem)" }}
+                >
+                  {s.val}
+                </div>
+                <div className="font-mono text-[9px] sm:text-[10px] text-gray-600 mt-1">{s.unit}</div>
               </div>
             ))}
           </div>
@@ -472,37 +560,35 @@ export default function LidarPage() {
       </section>
 
       {/* ══ ARDUINO SECTION ════════════════════════════════════════════════════ */}
-      <section className="relative py-24 px-6 lg:px-16">
+      <section className="section-px relative py-16 sm:py-24 px-6 lg:px-16">
         <GridBg />
         <div className="max-w-5xl mx-auto relative z-10">
           <SectionLabel color="#7b61ff">PROCESSING</SectionLabel>
-          <h2 className="font-display leading-none mb-4" style={{ fontSize: "clamp(2.8rem, 7vw, 5.5rem)" }}>
+          <h2 className="font-display leading-none mb-4" style={{ fontSize: "clamp(2rem, 7vw, 5.5rem)" }}>
             ARDUINO{" "}
             <span style={{ color: "#7b61ff" }}>INTELLIGENCE</span>
           </h2>
-          <p className="text-gray-500 text-base max-w-xl leading-relaxed mb-14">
+          <p className="text-gray-500 text-sm sm:text-base max-w-xl leading-relaxed mb-10 sm:mb-14">
             The Arduino Mega 2560 (or ESP32 for Wi-Fi) acts as the edge processor — parsing raw UART
             data from the RPLidar, classifying anomalies, and triggering alerts without cloud round-trips.
           </p>
 
-          <div className="grid lg:grid-cols-2 gap-10">
+          <div className="arduino-grid">
             {/* Board + code */}
             <div
-              className="rounded-2xl p-8 relative overflow-hidden"
+              className="rounded-2xl p-5 sm:p-8 relative overflow-hidden"
               style={{
                 background: "#0a1f0a",
                 border: "1px solid rgba(0,200,74,0.15)",
               }}
             >
-              {/* Subtle green glow */}
               <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 30% 30%, rgba(0,200,60,0.06), transparent 60%)" }} />
 
               <div className="flex items-center gap-2 font-mono text-[11px] tracking-widest text-green-400 mb-6 relative">
-                <span className="w-[7px] h-[7px] rounded-full bg-green-400" style={{ animation: "boardBlink 1.6s infinite" }} />
+                <span className="w-[7px] h-[7px] rounded-full bg-green-400 flex-shrink-0" style={{ animation: "boardBlink 1.6s infinite" }} />
                 ARDUINO MEGA 2560 — ACTIVE
               </div>
 
-              {/* Pins */}
               <div className="font-mono text-[10px] text-gray-600 tracking-widest mb-2">DIGITAL PINS</div>
               <div className="flex flex-wrap gap-1.5 mb-5">
                 {["D0","D1","TX0","RX0","D2","D3~","D4","D5~","D6~","D7","TX1","RX1"].map((p) => {
@@ -535,7 +621,7 @@ export default function LidarPage() {
 
               <div className="font-mono text-[10px] text-gray-600 tracking-widest mb-2">FIRMWARE SNIPPET</div>
               <pre
-                className="rounded-xl p-5 text-[11px] leading-relaxed overflow-x-auto"
+                className="firmware-pre rounded-xl p-4 sm:p-5 text-[10px] sm:text-[11px] leading-relaxed"
                 style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(0,200,74,0.12)", fontFamily: "'Space Mono', monospace", color: "#888" }}
               >
 {`// RPLidar → Arduino parsing loop
@@ -572,11 +658,11 @@ RPLidar lidar;
                 { title: "Low-power Deep Sleep",         desc: "Between scan cycles the microcontroller enters deep sleep, reducing idle draw to 10 µA — extending battery life to 6+ weeks in the field." },
                 { title: "Watchdog & Self-healing",      desc: "A hardware watchdog timer resets firmware if the main loop stalls, ensuring 99.9%+ uptime in unmonitored sewer environments." },
               ].map((f) => (
-                <li key={f.title} className="flex gap-4 py-5">
+                <li key={f.title} className="flex gap-3 sm:gap-4 py-4 sm:py-5">
                   <span style={{ color: "#00ffe7", flexShrink: 0, marginTop: 2 }}>▶</span>
                   <div>
                     <span className="block text-white font-medium text-sm mb-1">{f.title}</span>
-                    <span className="text-gray-500 text-sm leading-relaxed">{f.desc}</span>
+                    <span className="text-gray-500 text-xs sm:text-sm leading-relaxed">{f.desc}</span>
                   </div>
                 </li>
               ))}
@@ -586,22 +672,22 @@ RPLidar lidar;
       </section>
 
       {/* ══ SIGNAL FLOW ════════════════════════════════════════════════════════ */}
-      <section className="relative py-24 px-6 lg:px-16 pt-0">
+      <section className="section-px relative py-16 sm:py-24 px-6 lg:px-16 pt-0">
         <GridBg />
         <div className="max-w-5xl mx-auto relative z-10">
           <SectionLabel color="#00ffe7">DATA PIPELINE</SectionLabel>
-          <h2 className="font-display leading-none mb-14" style={{ fontSize: "clamp(2.8rem, 7vw, 5.5rem)" }}>
+          <h2 className="font-display leading-none mb-10 sm:mb-14" style={{ fontSize: "clamp(2rem, 7vw, 5.5rem)" }}>
             SIGNAL{" "}
             <span style={{ color: "#00ffe7" }}>FLOW</span>
           </h2>
 
           <div className="flex flex-col gap-0">
             {FLOW_STEPS.map((step, i) => (
-              <div key={step.num} className="flex gap-6 items-stretch">
+              <div key={step.num} className="flex gap-4 sm:gap-6 items-stretch">
                 {/* Left: circle + line */}
-                <div className="flex flex-col items-center w-12 flex-shrink-0">
+                <div className="flow-connector flex flex-col items-center w-10 sm:w-12 flex-shrink-0">
                   <div
-                    className="w-12 h-12 rounded-full border-2 flex items-center justify-center font-mono text-xs font-bold flex-shrink-0 relative z-10"
+                    className="flow-num w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 flex items-center justify-center font-mono text-[10px] sm:text-xs font-bold flex-shrink-0 relative z-10"
                     style={{ borderColor: step.color, background: step.color + "18", color: step.color, backgroundColor: "#080a0e" }}
                   >
                     {step.num}
@@ -613,16 +699,16 @@ RPLidar lidar;
 
                 {/* Content */}
                 <div
-                  className="flex-1 rounded-2xl p-6 mb-4 border transition-all duration-300 hover:translate-x-1"
+                  className="flow-content flex-1 rounded-2xl p-4 sm:p-6 mb-4 border transition-all duration-300 hover:translate-x-1"
                   style={{ background: "rgba(255,255,255,0.02)", borderColor: step.color + "25" }}
                 >
-                  <div className="font-display text-2xl mb-2" style={{ color: step.color }}>{step.title}</div>
-                  <div className="text-gray-400 text-sm leading-relaxed mb-3">{step.desc}</div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="font-display text-xl sm:text-2xl mb-2" style={{ color: step.color }}>{step.title}</div>
+                  <div className="text-gray-400 text-xs sm:text-sm leading-relaxed mb-3">{step.desc}</div>
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {step.tags.map((t) => (
                       <span
                         key={t}
-                        className="font-mono text-[10px] px-2.5 py-1 rounded border tracking-wider text-gray-500"
+                        className="font-mono text-[9px] sm:text-[10px] px-2 sm:px-2.5 py-1 rounded border tracking-wider text-gray-500"
                         style={{ borderColor: "rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}
                       >
                         {t}
@@ -637,23 +723,24 @@ RPLidar lidar;
       </section>
 
       {/* ══ MCU COMPARISON ═════════════════════════════════════════════════════ */}
-      <section className="relative py-24 px-6 lg:px-16 pt-0">
+      <section className="section-px relative py-16 sm:py-24 px-6 lg:px-16 pt-0">
         <GridBg />
         <div className="max-w-5xl mx-auto relative z-10">
           <SectionLabel color="#ff6b6b">HARDWARE SELECTION</SectionLabel>
-          <h2 className="font-display leading-none mb-12" style={{ fontSize: "clamp(2.8rem, 7vw, 5.5rem)" }}>
+          <h2 className="font-display leading-none mb-8 sm:mb-12" style={{ fontSize: "clamp(2rem, 7vw, 5.5rem)" }}>
             MCU{" "}
             <span style={{ color: "#ff6b6b" }}>COMPARISON</span>
           </h2>
 
-          <div className="rounded-2xl overflow-hidden border" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
-            <table className="w-full border-collapse">
+          {/* Horizontal scroll wrapper for mobile */}
+          <div className="table-scroll rounded-2xl border" style={{ borderColor: "rgba(255,255,255,0.07)" }}>
+            <table className="w-full border-collapse" style={{ minWidth: 520 }}>
               <thead>
                 <tr style={{ background: "rgba(255,255,255,0.02)" }}>
-                  {["FEATURE", "ARDUINO MEGA", "ESP32", "RASPBERRY PI ZERO"].map((h) => (
+                  {["FEATURE", "ARDUINO MEGA", "ESP32", "RPI ZERO"].map((h) => (
                     <th
                       key={h}
-                      className="font-mono text-[11px] tracking-widest text-gray-500 px-5 py-4 border-b text-left"
+                      className="font-mono text-[10px] tracking-widest text-gray-500 px-3 sm:px-5 py-4 border-b text-left"
                       style={{ borderColor: "rgba(255,255,255,0.07)" }}
                     >
                       {h}
@@ -664,9 +751,18 @@ RPLidar lidar;
               <tbody>
                 {COMPARE_ROWS.map((row, ri) => (
                   <tr key={row.feature} className="hover:bg-white/[0.015] transition-colors">
-                    <td className="px-5 py-4 text-sm text-gray-400" style={{ borderBottom: ri < COMPARE_ROWS.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>{row.feature}</td>
+                    <td
+                      className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm text-gray-400"
+                      style={{ borderBottom: ri < COMPARE_ROWS.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                    >
+                      {row.feature}
+                    </td>
                     {[row.mega, row.esp, row.rpi].map((val, vi) => (
-                      <td key={vi} className="px-5 py-4 text-center text-sm" style={{ borderBottom: ri < COMPARE_ROWS.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      <td
+                        key={vi}
+                        className="px-3 sm:px-5 py-3 sm:py-4 text-center text-sm"
+                        style={{ borderBottom: ri < COMPARE_ROWS.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                      >
                         {val === true  && <span style={{ color: "#00c84a", fontSize: 16 }}>✓</span>}
                         {val === false && <span style={{ color: "#ff4a4a", fontSize: 16 }}>✗</span>}
                         {typeof val === "string" && (
@@ -678,22 +774,25 @@ RPLidar lidar;
                 ))}
                 {/* Recommended row */}
                 <tr>
-                  <td className="px-5 py-4 text-sm text-gray-400">Recommended For</td>
-                  <td className="px-5 py-4 text-center"><span className="text-xs text-gray-600">Prototyping, wired</span></td>
-                  <td className="px-5 py-4 text-center">
-                    <span className="font-mono text-xs px-2.5 py-1 rounded-lg" style={{ color: "#00ffe7", background: "rgba(0,255,231,0.08)", border: "1px solid rgba(0,255,231,0.2)" }}>
+                  <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm text-gray-400">Recommended For</td>
+                  <td className="px-3 sm:px-5 py-3 sm:py-4 text-center"><span className="text-xs text-gray-600">Prototyping</span></td>
+                  <td className="px-3 sm:px-5 py-3 sm:py-4 text-center">
+                    <span className="font-mono text-xs px-2 py-1 rounded-lg" style={{ color: "#00ffe7", background: "rgba(0,255,231,0.08)", border: "1px solid rgba(0,255,231,0.2)" }}>
                       Production ★
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-center"><span className="text-xs text-gray-600">Research / compute</span></td>
+                  <td className="px-3 sm:px-5 py-3 sm:py-4 text-center"><span className="text-xs text-gray-600">Research</span></td>
                 </tr>
               </tbody>
             </table>
           </div>
+          {/* Scroll hint for mobile */}
+          <p className="font-mono text-[10px] text-gray-700 tracking-widest mt-3 text-center sm:hidden">
+            ← SCROLL TO SEE ALL COLUMNS →
+          </p>
         </div>
       </section>
 
-      
     </main>
   );
 }

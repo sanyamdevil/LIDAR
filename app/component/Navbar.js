@@ -7,8 +7,10 @@ import { Menu, X } from "lucide-react";
 
 const NAV_LINKS = [
   { label: "LIDAR",   href: "/lidar" },
+    { label: "WORKING", href: "/working" },
+
   { label: "GALLERY", href: "/gallery" },
-  { label: "AI",      href: "/AI" },
+  { label: "IMPACT",      href: "/Impact" },
   { label: "CONTACT", href: "/contact" },
 ];
 
