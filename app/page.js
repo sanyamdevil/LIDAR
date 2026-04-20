@@ -474,7 +474,7 @@ export default function SewerMonitor() {
             transition={{ duration: 0.6, delay: 0.6 }}
             className="flex flex-wrap items-center justify-center gap-4 mb-20"
           >
-            <Link href="/about">
+            <Link href="/lidar">
               <motion.span
                 whileHover={{ scale: 1.06, boxShadow: "0 0 50px rgba(0,255,231,0.35)" }}
                 whileTap={{ scale: 0.95 }}
@@ -483,7 +483,7 @@ export default function SewerMonitor() {
                 EXPLORE SYSTEM
               </motion.span>
             </Link>
-            <Link href="/gallery">
+            <Link href="/working">
               <motion.span
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}

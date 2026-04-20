@@ -11,7 +11,6 @@ const NAV_LINKS = [
 
   { label: "GALLERY", href: "/gallery" },
   { label: "IMPACT",      href: "/Impact" },
-  { label: "CONTACT", href: "/contact" },
 ];
 
 export default function Navbar() {
